@@ -83,14 +83,14 @@ func (server *Server) RegisterName(name string, rcvr interface{}) error {
 		name = reflect.Indirect(s.receiver).Type().Name()
 	}
 
-	methods := make([]reflect.Method, s.typ.NumMethod())
+	methods := make([]reflect.Method, 0, s.typ.NumMethod())
 
 	// Register all methods.
 	for i := 0; i < s.typ.NumMethod(); i++ {
 		method := s.typ.Method(i)
 		// The methods should be exported and has valid signature.
 		if method.PkgPath == "" && validMethodType(method.Type) {
-			methods[i] = method
+			methods = append(methods, method)
 		}
 	}
 	if len(methods) == 0 {
@@ -130,16 +130,14 @@ func (server *Server) dispatch(service, method string, args, reply interface{}) 
 }
 
 func validMethodType(typ reflect.Type) bool {
-	if typ.NumIn() != 3 || typ.NumOut() != 0 {
+	if typ.NumIn() != 3 || typ.NumOut() != 1 {
 		return false
 	}
-
-	// All input args should be pointer.
-	for i := 1; i < typ.NumIn(); i++ {
-		if typ.In(i).Kind() != reflect.Ptr {
-			return false
-		}
+	if typ.In(2).Kind() != reflect.Ptr {
+		return false
 	}
-
+	if typ.Out(0).Name() != "error" {
+		return false
+	}
 	return true
 }
